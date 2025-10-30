@@ -2,10 +2,7 @@
 from torch.utils.data import DataLoader, ConcatDataset
 
 def data_provider(args, flag):
-    if args.prompt_emb:
-        from data_provider.data_loader_emb import Dataset_Custom
-    else:
-        from data_provider.data_loader import Dataset_PEMS
+    from data_provider.data_loader import Dataset_PEMS, Dataset_Custom
 
     data_dict = {
         'PEMS07': Dataset_PEMS,
@@ -18,9 +15,6 @@ def data_provider(args, flag):
     timeenc = 0
 
     shuffle_flag = False if (flag == 'test' or flag == 'TEST') else True
-    # shuffle_flag = False
-    if args.prompt_emb:
-        shuffle_flag = False
 
     drop_last = False
     batch_size = args.batch_size

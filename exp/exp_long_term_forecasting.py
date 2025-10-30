@@ -43,8 +43,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
         self.model.eval()
         with torch.no_grad():
             for loader, data in zip(vali_loader, vali_data):
-                if self.args.adj_graph:
-                    self.model.adj_mx=data.adj_mx
+                self.model.adj_mx=data.adj_mx
                 for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(loader):
                     batch_x = batch_x.float().to(self.device)
                     batch_y = batch_y.float().to(self.device)
@@ -115,8 +114,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
             self.model.train()
             epoch_time = time.time()
             for loader, data in zip(train_loader,train_data):
-                if self.args.adj_graph:
-                    self.model.adj_mx=data.adj_mx
+                self.model.adj_mx=data.adj_mx
                 for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(loader):
                     iter_count += 1
                     model_optim.zero_grad()
@@ -203,8 +201,7 @@ class Exp_Long_Term_Forecast(Exp_Basic):
         self.model.eval()
         with torch.no_grad():
             for data, loader in zip(test_data, test_loader):
-                if self.args.adj_graph:
-                    self.model.adj_mx=data.adj_mx
+                self.model.adj_mx=data.adj_mx
                 for i, (batch_x, batch_y, batch_x_mark, batch_y_mark) in enumerate(loader):
                     batch_x = batch_x.float().to(self.device)
                     batch_y = batch_y.float().to(self.device)

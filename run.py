@@ -143,6 +143,9 @@ if __name__ == '__main__':
 
     parser.add_argument('--nb_features', type=int, default=-1, help='number of features in the dataset')
 
+    parser.add_argument('--slice_size_per_day', type=int, default=288, help='number of time steps per day for the dataset')
+    parser.add_argument('--num_nodes', type=int, default=1, help='number of nodes in the dataset')
+    parser.add_argument('--channel', type=int, default=1, help='number of channels in the dataset')
     args = parser.parse_args()
     if torch.cuda.is_available() and args.use_gpu:
         args.device = torch.device('cuda:{}'.format(args.gpu))

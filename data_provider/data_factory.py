@@ -2,13 +2,14 @@
 from torch.utils.data import DataLoader, ConcatDataset
 
 def data_provider(args, flag):
-    from data_provider.data_loader import Dataset_PEMS, Dataset_Custom
+    from data_provider.data_loader import Dataset_PEMS, Dataset_Custom, Dataset_Weather
 
     data_dict = {
         'PEMS07': Dataset_PEMS,
         'PEMS03': Dataset_PEMS,
         'PEMS04': Dataset_PEMS,
         'PEMS08': Dataset_PEMS,
+        'WTH': Dataset_Weather
     }
 
     # timeenc = 0 if args.embed != 'timeF' else 1

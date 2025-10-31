@@ -9,10 +9,12 @@ pip install -r requirements.txt
 ```
 
 # 📖Datesets
-🚀The dataset used for testing will be open-sourced soon.
+Due to file size limitations, we have only provided the WTH dataset for testing purposes.
+
+🚀**Other datasets is coming soon!**
 
 # 🏃Training Example
-All training scripts are located in the `./scripts` directory.To train a model using the PEMS07 dataset, run the following command:
+All training scripts are located in the `./scripts` directory.To train a model using the WTH dataset, run the following command:
 ```
-./scripts/PEMS07.sh
+./scripts/WTH.sh
 ```

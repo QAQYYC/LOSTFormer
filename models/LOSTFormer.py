@@ -21,6 +21,7 @@ class Transpose(nn.Module):
         else:
             return x.transpose(*self.dims)
 
+
 class TemporalEmbedding(nn.Module):
     def __init__(self, config, d_model, seq_len, num_patches, channels, dropout=0.1):
         super(TemporalEmbedding, self).__init__()
@@ -50,12 +51,13 @@ class TemporalEmbedding(nn.Module):
             x: [batch, 1, num_patches, d_model]
 
         """
-        x = x.reshape(x.shape[:-2] + (self.channels, ))
+        x = x.reshape(x.shape[:-2] + (self.channels,))
         x = self.embeddings(x)
         x = x.unsqueeze(1)
         x, _ = self.transformer_block(x)
 
         return self.dropout(x)
+
 
 class SpatialEmbedding(nn.Module):
     def __init__(self, config, d_model, seq_len, num_patches, channels, dropout=0.1):
@@ -86,12 +88,13 @@ class SpatialEmbedding(nn.Module):
             x: [batch, num_nodes, 1, d_model]
 
         """
-        x = x.transpose(1,2)
-        x = x.reshape(x.shape[:-2] + (self.channels, ))
+        x = x.transpose(1, 2)
+        x = x.reshape(x.shape[:-2] + (self.channels,))
         x = self.embeddings(x)
         x = x.unsqueeze(2)
         x, _ = self.transformer_block(x)
         return self.dropout(x)
+
 
 class MultiHeadsDotAttention(nn.Module):
     def __init__(self, config, d_v=None):
@@ -115,7 +118,6 @@ class MultiHeadsDotAttention(nn.Module):
         key = self.key_projection(key)
         value = self.value_projection(value)
 
-        # [bacth, channel, patch_num, d_model] -> [batch, channel, patch_num, n_heads, d_k] -> [batch, channel, n_heads, patch_num, d_k]
         q_shape = query.shape
         k_shape = key.shape
         P, D = query.shape[-2:]
@@ -127,17 +129,15 @@ class MultiHeadsDotAttention(nn.Module):
         attn_score = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(self.d_k)
         if masked is True:
             masked_mat = torch.tril(torch.ones([P, P]), diagonal=0).to(torch.bool).to(self.device)
-            # print(masked_mat)
             attn_score = torch.masked_fill(attn_score, ~masked_mat, -np.inf)
 
-        # print(attn_score[0,0,0])
         output = torch.softmax(attn_score, dim=-1)
-        # print(output[0,0,0])
         output = output @ value
         output = rearrange(output, '... h p d -> ... p (h d)')
         output = self.output_projection(output)
 
         return output, attn_score
+
 
 class TransformerBlock(nn.Module):
     def __init__(self, config, masked_attention, self_attention, feed_forward=None, d_model=None):
@@ -167,10 +167,6 @@ class TransformerBlock(nn.Module):
             self.feed_forward = feed_forward
 
     def forward(self, x):
-        # residual = x
-        # x, attn_score = self.masked_attention(x, x, x, masked=True)  # TODO: check if masked_attention is needed
-        # x = self.norm1(residual + self.dropout1(x))
-
         residual = x
         x, attn_score = self.self_attention(x, x, x)
         x = self.norm2(residual + self.dropout2(x))
@@ -180,14 +176,16 @@ class TransformerBlock(nn.Module):
         x = self.norm3(residual + self.dropout3(x))
         return x, attn_score
 
+
 class SeriesDecomposition(nn.Module):
     """
     Series decomposition module that separates time series into trend and seasonal components
     """
+
     def __init__(self, kernel_size=25):
         super(SeriesDecomposition, self).__init__()
         self.kernel_size = kernel_size
-        self.avg_pool = nn.AvgPool1d(kernel_size=kernel_size, stride=1, padding=(kernel_size-1)//2)
+        self.avg_pool = nn.AvgPool1d(kernel_size=kernel_size, stride=1, padding=(kernel_size - 1) // 2)
 
     def forward(self, x):
         # x shape: [batch, seq_len, channels] or [batch, seq_len, num_nodes, channel]
@@ -219,7 +217,7 @@ class SeriesDecomposition(nn.Module):
 
 
 class Model(nn.Module):
-    def __init__(self, config, position_embedding_mode: str = 'Traditional'):
+    def __init__(self, config):
         super(Model, self).__init__()
         self.device = config.device
         self.task_name = config.task_name
@@ -233,19 +231,12 @@ class Model(nn.Module):
         self.slice_size_per_day = config.slice_size_per_day
         self.adj_mx = None
 
-
-
         self.revin = RevIN(config.enc_in, affine=False)
 
-
-        # self.emb_dim = self.d_model // 8
         self.embedding = nn.Linear(self.channel + 2, self.d_model)
         self.series_decomposition = SeriesDecomposition(kernel_size=3)
         self.tod_embedding = nn.Embedding(self.slice_size_per_day, self.d_model)
         self.dow_embedding = nn.Embedding(7, self.d_model)
-        # self.node_embedding = nn.init.xavier_uniform(
-        #     nn.Parameter(torch.empty(config.num_nodes, self.d_model)).to(config.device)
-        # )
 
         self.spatial_embedding = SpatialEmbedding(
             config,
@@ -255,40 +246,35 @@ class Model(nn.Module):
             config.seq_len * config.channel
         )
         self.adaptive_embeddings = nn.Embedding(self.seq_len * self.num_nodes,
-                             self.d_model).to(self.device)
+                                                self.d_model).to(self.device)
 
         self.emb_projection = nn.Linear(self.d_model * 6, self.d_model)
 
         self.transformers_list = nn.ModuleList([
-                        TransformerBlock(
-                            config,
-                            PerformerAttention(
-                                config,
-                                nb_features=None,
-                                use_relu_kernel=False
-                            ),
-                            PerformerAttention(
-                                config,
-                                nb_features=None,
-                                use_relu_kernel=False
-                            ),
-                            # feed_forward=SparseMoE(self.d_model, num_experts=4, top_k=2) if i == config.d_layers - 1 else None
-                            feed_forward=SparseMoE(self.d_model, self.d_ff, num_experts=4, top_k=2)
-                        ) for i in range(config.d_layers)
-                    ])
-
-
+            TransformerBlock(
+                config,
+                PerformerAttention(
+                    config,
+                    nb_features=None,
+                    use_relu_kernel=False
+                ),
+                PerformerAttention(
+                    config,
+                    nb_features=None,
+                    use_relu_kernel=False
+                ),
+                feed_forward=SparseMoE(self.d_model, self.d_ff, num_experts=4, top_k=2)
+            ) for i in range(config.d_layers)
+        ])
 
         self.up_head = nn.Linear(self.d_model, self.channel)
 
-
         self.mix_projection = nn.Linear(self.seq_len * self.d_model, self.pred_len * self.channel)
-
 
     def forecast(self, x, x_mark=None):
         need_transpose = False
         if len(x.shape) == 3:
-            need_transpose=True
+            need_transpose = True
             x = x.unsqueeze(-1)
 
         x = self.revin(x, 'norm')
@@ -310,17 +296,17 @@ class Model(nn.Module):
         shape = x_trend_emb.shape
         adaptive_emb = self.adaptive_embeddings(
             torch.arange(0, self.seq_len * self.num_nodes).to(x.device)).reshape(1,
-                                                                                        self.num_nodes,
-                                                                                        self.seq_len,
-                                                                                        self.d_model)
+                                                                                 self.num_nodes,
+                                                                                 self.seq_len,
+                                                                                 self.d_model)
         tod_emb = self.tod_embedding((x_mark[..., 6] * self.slice_size_per_day).long()).unsqueeze(1)
         dow_emb = self.dow_embedding(x_mark[..., 2].long()).unsqueeze(1)
         x_emb = torch.concat([x_trend_emb,
                               x_season_emb,
-                              adaptive_emb.expand(shape[:-1] + (self.d_model, )),
-                              tod_emb.expand(shape[:-1] + (self.d_model, )),
-                              dow_emb.expand(shape[:-1] + (self.d_model, )),
-                              spatio_emb.expand(shape[:-1] + (self.d_model, ))
+                              adaptive_emb.expand(shape[:-1] + (self.d_model,)),
+                              tod_emb.expand(shape[:-1] + (self.d_model,)),
+                              dow_emb.expand(shape[:-1] + (self.d_model,)),
+                              spatio_emb.expand(shape[:-1] + (self.d_model,))
                               ], dim=-1)
         x_emb = self.emb_projection(x_emb)
         x = x_emb
@@ -330,7 +316,7 @@ class Model(nn.Module):
 
         x = x.reshape(x.shape[0], self.num_nodes, -1)
         x = self.mix_projection(x)
-        x = x.reshape(x.shape[0], self.num_nodes, self.pred_len, self.channel).transpose(1,2)
+        x = x.reshape(x.shape[0], self.num_nodes, self.pred_len, self.channel).transpose(1, 2)
 
         x = self.revin(x, 'denorm', target_slice=slice(0, None))
         if need_transpose:
@@ -340,4 +326,4 @@ class Model(nn.Module):
     def forward(self, x_enc, x_mark_enc, x_dec, x_mark_dec, mask=None):
         if self.task_name == 'long_term_forecast' or self.task_name == 'short_term_forecast':
             dec_out = self.forecast(x_enc, x_mark=x_mark_enc)
-            return dec_out  # [B, L, D]
+            return dec_out

@@ -1,0 +1,5 @@
+einops==0.8.1
+matplotlib==3.10.7
+numpy==2.3.4
+pandas==2.3.3
+torch==2.1.1+cu118

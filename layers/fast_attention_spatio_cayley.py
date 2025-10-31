@@ -28,12 +28,10 @@ class PerformerAttention(nn.Module):
         self.scaling_matrix = torch.diag(math.sqrt(self.projection.shape[1]) * torch.ones((self.projection.shape[0]))).to(self.device)
 
     def forward(self, x, _, __, cache=None, masked=False):
-        # x: [B, C, P, D]
         B, C, P, D = x.shape
         H, D_H = self.heads, self.d_head
 
         x = x.permute(0,2,1,3).reshape(B, C * P, D)  # [B, C*P, D]
-        # x = x.reshape(B, C * P, D)  # [B, C*P, D]
         qkv = self.to_qkv(x).chunk(3, dim=-1)
         q, k, v = [t.view(B , C * P, H, D_H) for t in qkv]
         del qkv
@@ -60,14 +58,8 @@ class PerformerAttention(nn.Module):
         k_prime = k_prime.permute(1, 0, 2, 3)
         v = v.permute(1, 0, 2, 3)
         if masked:
-            # num = causal_numerator_without_optimization(q_prime, k_prime, v, channel=C)
-            # den = causal_denominator_without_optimization(q_prime, k_prime, channel=C)
-            # num = SpatioCausalNumerator.apply(q_prime, k_prime, v, C)
-            # den = SpatioCausalDenominator.apply(q_prime, k_prime, C)
             num = causal_numerator(q_prime, k_prime, v, channel=C)
             den = causal_denominator(q_prime, k_prime, channel=C)
-            # loss = causual_loss_without_optimization(q,k,q_prime, k_prime,channel=C)
-
         else:
             kvs = torch.einsum("sbhm,sbhd->bhmd", k_prime, v)
             ks_sum = torch.sum(k_prime, dim=0)
@@ -76,17 +68,11 @@ class PerformerAttention(nn.Module):
             den = torch.einsum("sbhm,bhm->sbh", q_prime, ks_sum)
             del kvs
             del ks_sum
-            # qs, ks, q_prime, k_prime = qk_sampling(q, k, q_prime, k_prime, channel=C)
-            # sum_prime = torch.einsum('sbhm, lbhm -> bhsl', q_prime, k_prime)
-            # loss_prime = torch.log(sum_prime / torch.sum(sum_prime,dim=-1).unsqueeze(-1))
-            # loss_truth = F.softmax(torch.einsum('sbhm, lbhm -> bhsl', qs, ks), dim=-1)
-            # loss = torch.sum(loss_truth*loss_prime)
 
         out = num / den.unsqueeze(-1)
         del num
         del den
         out = out.transpose(0,1).reshape(B, P * C, H * D_H)
         out = self.to_out(out).view(B, P, C, D).permute(0, 2, 1, 3)  # [B,C,P,D]
-        # out = self.to_out(out).view(B, C, P, D)  # [B,C,P,D]
 
         return out, (q_prime, k_prime, projection_matrix)

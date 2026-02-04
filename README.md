@@ -4,9 +4,7 @@
 efficient and accurate spatio-temporal forecasting. The model first extracts temporal and spatial features through *
 *Series Decomposition Embedding** and **Spatial Correlation Embedding**. Then, multiple Transformer Blocks are stacked,
 each integrating **a Learnable Orthogonal Rotation Attention (Lor-Attention)** mechanism and a Sparse
-Mixture-of-Experts (SparseMoE) layer to model comprehensive spatio-temporal dependencies efficiently.The overall
-framework is as follows:
-![Framework](./pic/total.png)
+Mixture-of-Experts (SparseMoE) layer to model comprehensive spatio-temporal dependencies efficiently.
 
 # ⚙️Prerequisites
 

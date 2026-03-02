@@ -1,8 +1,8 @@
 # [DASFAA 2026] LOSTFormer: Linear Orthogonal Spatio-Temporal  Transformer with Learnable Rotation
 
 🌟Our paper proposes **LOSTFormer (Linear Orthogonal Spatio-Temporal Transformer)**, an architecture designed for
-efficient and accurate spatio-temporal forecasting. The model first extracts temporal and spatial features through *
-*Series Decomposition Embedding** and **Spatial Correlation Embedding**. Then, multiple Transformer Blocks are stacked,
+efficient and accurate spatio-temporal forecasting. The model first extracts temporal and spatial features through 
+**Series Decomposition Embedding** and **Spatial Correlation Embedding**. Then, multiple Transformer Blocks are stacked,
 each integrating **a Learnable Orthogonal Rotation Attention (Lor-Attention)** mechanism and a Sparse
 Mixture-of-Experts (SparseMoE) layer to model comprehensive spatio-temporal dependencies efficiently.
 
